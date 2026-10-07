@@ -2,7 +2,7 @@
 
 ## Situação
 
-Proposta preparada em branch separado. NÃO publicada no site e NÃO aplicada ao banco. A revisão automática rejeitou a migração por conceder acesso anônimo aos novos dados de motoristas e custos. A decisão de acesso precisa ser confirmada: área compartilhada sem login ou área restrita autenticada.
+Publicado em 07/10/2026 no Render, commit ddaa96b. O usuário autorizou expressamente qualquer visitante sem login a consultar e alterar frota, motoristas e custos. Migração aplicada e planilha atual importada: 30 registros. A reimportação do mesmo arquivo ignorou os 30 registros, sem duplicar.
 
 ## Implementado no código
 
@@ -20,7 +20,7 @@ Proposta preparada em branch separado. NÃO publicada no site e NÃO aplicada ao
 
 Tema, navegação expansível, cards, tabelas, SheetJS já existente e REST Supabase. O script inline de KM é idêntico à base auditada. Não há migração ou alteração de km_registros.
 
-## Banco proposto, ainda não aplicado
+## Banco aplicado
 
 frota_operacoes, frota_registros, frota_importacoes e frota_config. Auditoria privada frota_private.audit_logs. Caminhões, motoristas, abastecimentos e pedágios são views security_invoker, sem valores redundantes. Trigger calcula KM e normaliza placa/motorista. Índice único e RPC transacional evitam reimportação e conflitos concorrentes. Identidade da viagem: data + operação + placa + KM inicial + partida + rota; mudanças de motorista, final ou custos geram conflito para edição, não novo registro silencioso. Exclusão lógica preserva auditoria.
 
@@ -40,7 +40,7 @@ A planilha real atual enviada em 07/10 foi lida integralmente. A última linha p
 
 ## Regressão e pendências
 
-Preservação do código KM verificada, mas NÃO equivale a regressão completa em navegador. O navegador remoto não conseguiu acessar o servidor local de testes (ERR_CONNECTION_REFUSED). Não foram confirmados visualmente layout/responsividade, downloads ou CRUD. A RPC, triggers, RLS, auditoria e sincronização do novo banco não foram executados porque a migração foi rejeitada. Falta concluir esses testes, persistir os dados autorizados e publicar após a decisão de acesso. Nenhum desses itens é declarado 100% funcional em produção.
+Preservação byte a byte do código KM verificada. REST anônima e RPC real validadas: 30 inseridos, segunda importação com 0 inseridos e 30 duplicados, totais reconciliados, 30 entradas de auditoria. A tabela KM permaneceu com 123 registros, sem escrita desta implementação. Render confirmou deploy live. No navegador publicado foram confirmados menu expansível, KM sincronizado, visão geral da Frota com dados reais e último registro atualizado. CRUD manual completo, downloads e responsividade ainda não foram testados em navegador.
 
 ## Recomendação
 
