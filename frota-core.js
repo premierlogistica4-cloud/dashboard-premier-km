@@ -188,11 +188,18 @@
    for(let i=h+1;i<a.length;i++){const raw=a[i];if(raw.every(missing))continue;const values={};headers.forEach((v,j)=>values[String(v)||'Coluna '+(j+1)]=raw[j]);const o={tipo,operacao:defaultOp,origem:{aba:sheet,linha:i+1,colunas:values}};mapped.forEach((k,j)=>{if(k)o[k]=raw[j];});if(o.operacao&&o.operacao!=='PEND'&&!OPS[o.operacao])o.operacao=operation(o.operacao,'','',defaultOp);if(o.em_andamento)o.em_andamento=['SIM','TRUE','1'].includes(normalize(o.em_andamento));try{const v=validateExpense(o);rows.push({sheet,line:i+1,record:v.record,warnings:v.warnings,error:null,selected:true});}catch(e){rows.push({sheet,line:i+1,record:null,warnings:[],error:e.message,selected:false});}}
   }return {rows,issues};
  }
+ function kmHistory(all,f={}){
+  const scope=filtered(all,{...f,start:'',end:''}).filter(x=>x.km_total!==null&&x.km_total!==undefined);
+  if(!scope.length)return null;
+  const historyStart=scope.map(x=>x.data).sort()[0],start=f.start||historyStart,end=f.end||scope.map(x=>x.data_fim).sort().at(-1);
+  const current=filtered(scope,{start,end}),prior=scope.filter(x=>x.data_fim<start),baseKm=sum(prior,'km_total'),periodKm=sum(current,'km_total');
+  return {historyStart,start,end,baseKm,periodKm,accumulatedKm:baseKm+periodKm,increaseKm:periodKm,percent:baseKm>0?periodKm/baseKm*100:null,initial:prior.length===0};
+ }
  function driverSummary(rows){
   const linked=rows.filter(x=>!x.deleted_at&&!x.sem_vinculo&&x.motorista&&x.motorista!=='Não vinculado'),calendar=new Set();
   for(const x of linked){const start=Date.parse(x.data+'T00:00:00Z'),end=Date.parse(x.data_fim+'T00:00:00Z');for(let d=start;d<=end;d+=86400000)calendar.add(new Date(d).toISOString().slice(0,10));}
   const s=executiveStats(linked);return {...s,rows:linked,utilizations:linked.length,activeDays:calendar.size,kmPerDay:ratio(s.km,calendar.size),completed:linked.filter(x=>!x.em_andamento).length,ongoing:linked.filter(x=>x.em_andamento).length,litersCoverage:ratio(s.measuredKm,s.km),vehicles:[...new Set(linked.map(x=>x.placa))],operations:[...new Set(linked.map(x=>x.operacao))]};
  }
- const core={driverSummary,expenseRows,executiveStats,comparisonPeriods,evolution,validateExpense,parseExpenses,EXPENSE_FIELDS,estimate,MARKET_REFS,marketReference,fuelBasis,analysis,days,fuelLiters,OPS,HEADERS,fields,normalize,missing,number,date,period,validate,operation,parseWorkbook,classify,identity,payload,filtered,stats,groups,alerts,sum,known,ratio,order,exportRows};
+ const core={kmHistory,driverSummary,expenseRows,executiveStats,comparisonPeriods,evolution,validateExpense,parseExpenses,EXPENSE_FIELDS,estimate,MARKET_REFS,marketReference,fuelBasis,analysis,days,fuelLiters,OPS,HEADERS,fields,normalize,missing,number,date,period,validate,operation,parseWorkbook,classify,identity,payload,filtered,stats,groups,alerts,sum,known,ratio,order,exportRows};
  if(typeof module!=='undefined'&&module.exports)module.exports=core;else root.FrotaCore=core;
 })(typeof window!=='undefined'?window:globalThis);
