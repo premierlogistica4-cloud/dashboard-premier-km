@@ -5,3 +5,5 @@ aside{position:sticky;top:0;height:100vh;overflow:auto}main{min-width:0}nav .fro
 @media(max-width:550px){#frotaRoot .filters{grid-template-columns:1fr 1fr}#frotaRoot .cards{grid-template-columns:1fr}#frotaRoot .mini-row{grid-template-columns:95px 1fr 95px}#fDialog .f-form{grid-template-columns:1fr}.top{align-items:flex-start;gap:10px;flex-wrap:wrap}}
 
 #frotaRoot .f-duration{background:#103c4c;color:#62e6ff;border:1px solid #20bdd9;font-weight:800;font-size:14px;padding:7px 12px;white-space:nowrap}
+
+#frotaRoot .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}#frotaRoot .panel{margin-bottom:14px}#frotaRoot td:has(details){white-space:normal;min-width:160px}#frotaRoot details summary{cursor:pointer;color:var(--cyan);padding:10px 0}#frotaRoot td details[open]{min-width:320px}#frotaRoot td details div{overflow-wrap:anywhere}@media(max-width:900px){#frotaRoot .grid{grid-template-columns:1fr}}
