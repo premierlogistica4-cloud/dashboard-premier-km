@@ -31,7 +31,7 @@
   DATA:'data','DATA INICIAL':'data','DATA FIM':'data_fim','DATA FINAL':'data_fim',OPERACAO:'operacao',MOTORISTA:'motorista',PLACA:'placa',
   'KM INICIAL':'km_inicial','KM FINAL':'km_final','KM TOTAL':'km_declarado','TOTAL KM':'km_declarado',
   'VALOR DIESEL':'diesel','VLR EM DIESEL':'diesel','VALOR EM DIESEL':'diesel','COMBUSTIVEL':'diesel',
-  LITROS:'litros','PRECO/LITRO':'preco_litro','PRECO POR LITRO':'preco_litro',PEDAGIO:'pedagio',
+  LITROS:'litros',LITRAGEM:'litros','LITRAGEM ABASTECIDA':'litros','LITRAGEM A':'litros','PRECO/LITRO':'preco_litro','PRECO POR LITRO':'preco_litro',PEDAGIO:'pedagio',
   'PONTO DE PARTIDA':'partida',PARTIDA:'partida','DESTINO/ROTA':'rota',ROTA:'rota',DESTINO:'rota',OBSERVACAO:'observacao',DESCRICAO:'observacao'
  };
  const HEADERS=['DATA','DATA FIM','OPERAÇÃO','MOTORISTA','PLACA','KM INICIAL','KM FINAL','KM TOTAL','VALOR DIESEL','LITROS','PREÇO/LITRO','PEDÁGIO','PONTO DE PARTIDA','DESTINO/ROTA','OBSERVAÇÃO'];
@@ -78,7 +78,7 @@
     const o={};cols.forEach((k,j)=>{if(k)o[k]=row[j];});
     if(missing(o.data)&&missing(o.placa)&&missing(o.motorista))continue;
     o.origem={aba:name,linha:i+1,valores:Object.fromEntries(cols.map((k,j)=>[k||'COL_'+j,row[j] instanceof Date?row[j].toISOString():row[j]]))};
-    try{const v=validate(o,defaultOp);item.record=v.record;item.warnings=v.warnings;}catch(e){item.error=e.message;}
+    try{if(number(o.litros,'Litros')===0)o.litros=null;if(number(o.preco_litro,'Preço/L')===0)o.preco_litro=null;const v=validate(o,defaultOp);item.record=v.record;item.warnings=v.warnings;}catch(e){item.error=e.message;}
     result.rows.push(item);
    }
   }
@@ -152,6 +152,7 @@
    if(meta){row.operacao=meta.operacao;row.data=meta.periodo_inicio||x.data;row.data_fim=meta.periodo_fim||[x.data_fim,...e.map(v=>v.data)].sort().at(-1);}
    if(fuel.length){row.diesel=sum(fuel,'valor');row.litros=row.litros_reais?sum(fuel,'litros'):null;row.preco_litro=ratio(row.diesel,row.litros);}
    if(tolls.length)row.pedagio=sum(tolls,'valor');
+   if(x.origem?.km_desconsiderado){row.km_original=x.km_total;row.km_total=null;row.km_desconsiderado=true;}
    return row;
   });
   for(const e of active.filter(v=>v.registro_id===null||v.registro_id===undefined||!out.some(x=>x.id===v.registro_id))){out.push({id:'despesa-'+e.id,data:e.periodo_inicio||e.data,data_fim:e.periodo_fim||e.data,operacao:e.operacao||'PEND',placa:e.placa,motorista:'Não vinculado',km_total:null,km_inicial:null,km_final:null,km_declarado:null,diesel:e.tipo==='diesel'?e.valor:null,litros:e.tipo==='diesel'?e.litros:null,preco_litro:e.preco_litro,pedagio:e.tipo==='pedagio'?e.valor:null,observacao:e.observacao,viagem:e.viagem,em_andamento:e.em_andamento,despesas:[e],abastecimentos:e.tipo==='diesel'?1:0,passagens:e.tipo==='pedagio'?1:0,sem_vinculo:true,litros_reais:e.tipo==='diesel'&&e.litros>0});}
