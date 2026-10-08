@@ -145,6 +145,49 @@
   return out;
  }
  function exportRows(rows){return rows.map(x=>Object.fromEntries(HEADERS.map((h,i)=>[h,x[fields[i]]??''])));}
- const core={estimate,MARKET_REFS,marketReference,fuelBasis,analysis,days,fuelLiters,OPS,HEADERS,fields,normalize,missing,number,date,period,validate,operation,parseWorkbook,classify,identity,payload,filtered,stats,groups,alerts,sum,known,ratio,order,exportRows};
+ function expenseRows(records,expenses){
+  const active=expenses.filter(x=>!x.deleted_at),out=records.filter(x=>!x.deleted_at).map(x=>{
+   const e=active.filter(v=>v.registro_id===x.id),fuel=e.filter(v=>v.tipo==='diesel'),tolls=e.filter(v=>v.tipo==='pedagio'),meta=e.find(v=>v.periodo_inicio)||e[0];
+   const row={...x,despesas:e,base_record:x,abastecimentos:fuel.length,passagens:tolls.length,litros_reais:fuel.length>0&&fuel.every(v=>v.litros>0),em_andamento:e.some(v=>v.em_andamento),viagem:meta?.viagem||'',periodo_fim_real:meta?.periodo_fim??x.data_fim};
+   if(meta){row.operacao=meta.operacao;row.data=meta.periodo_inicio||x.data;row.data_fim=meta.periodo_fim||[x.data_fim,...e.map(v=>v.data)].sort().at(-1);}
+   if(fuel.length){row.diesel=sum(fuel,'valor');row.litros=row.litros_reais?sum(fuel,'litros'):null;row.preco_litro=ratio(row.diesel,row.litros);}
+   if(tolls.length)row.pedagio=sum(tolls,'valor');
+   return row;
+  });
+  for(const e of active.filter(v=>v.registro_id===null||v.registro_id===undefined||!out.some(x=>x.id===v.registro_id))){out.push({id:'despesa-'+e.id,data:e.periodo_inicio||e.data,data_fim:e.periodo_fim||e.data,operacao:e.operacao||'PEND',placa:e.placa,motorista:'Não vinculado',km_total:null,km_inicial:null,km_final:null,km_declarado:null,diesel:e.tipo==='diesel'?e.valor:null,litros:e.tipo==='diesel'?e.litros:null,preco_litro:e.preco_litro,pedagio:e.tipo==='pedagio'?e.valor:null,observacao:e.observacao,viagem:e.viagem,em_andamento:e.em_andamento,despesas:[e],abastecimentos:e.tipo==='diesel'?1:0,passagens:e.tipo==='pedagio'?1:0,sem_vinculo:true,litros_reais:e.tipo==='diesel'&&e.litros>0});}
+  return out;
+ }
+ function executiveStats(rows,type='S10'){
+  const s=analysis(rows,type),e=estimate(rows,type),measured=rows.filter(x=>!x.em_andamento&&x.km_total>0&&x.litros>0&&x.diesel!==null),completed=rows.filter(x=>!x.em_andamento&&!x.sem_vinculo),mkm=sum(measured,'km_total'),ml=sum(measured,'litros');
+  return {...s,estimate:e,measuredKml:ratio(mkm,ml),measuredLpkm:ratio(ml,mkm),measuredKm:mkm,measuredCount:measured.length,actualLiters:known(rows,'litros'),actualPrice:ratio(sum(rows.filter(x=>x.litros>0&&x.diesel!==null),'diesel'),sum(rows.filter(x=>x.litros>0&&x.diesel!==null),'litros')),ongoing:rows.filter(x=>x.em_andamento).length,completed:completed.length,fills:rows.reduce((n,x)=>n+(x.abastecimentos||((x.diesel>0||x.litros>0)?1:0)),0),passages:rows.reduce((n,x)=>n+(x.passagens||0),0),kmUnlinked:rows.filter(x=>x.sem_vinculo).length};
+ }
+ function comparisonPeriods(all,f={}){
+  const current=filtered(all,f),start=f.start||current.map(x=>x.data).sort()[0],end=f.end||current.map(x=>x.data_fim).sort().at(-1);if(!start||!end)return null;
+  const shift=(d,n)=>new Date(Date.parse(d+'T00:00:00Z')+n*86400000).toISOString().slice(0,10),length=days({data:start,data_fim:end}),previousEnd=shift(start,-1),previousStart=shift(start,-length);
+  const previous=filtered(all,{...f,start:previousStart,end:previousEnd});
+  return {start,end,previousStart,previousEnd,current,previous,currentKm:sum(current,'km_total'),previousKm:previous.length?sum(previous,'km_total'):null,difference:previous.length?sum(current,'km_total')-sum(previous,'km_total'):null,percent:previous.length&&sum(previous,'km_total')>0?(sum(current,'km_total')/sum(previous,'km_total')-1)*100:null};
+ }
+ function evolution(rows){
+  const dates=[...new Set(rows.filter(x=>x.km_total!==null).map(x=>x.data_fim))].sort(),total={SP:0,BSB:0,FAZ:0,PEND:0};
+  return dates.map(date=>{const increment={SP:0,BSB:0,FAZ:0,PEND:0};for(const x of rows.filter(x=>x.data_fim===date)){increment[x.operacao]+=x.km_total||0;}for(const k of Object.keys(total))total[k]+=increment[k];return {date,increment,cumulative:{...total}};});
+ }
+ const EXPENSE_FIELDS=['registro_id','tipo','horario','tipo_veiculo','natureza','data','placa','operacao','viagem','periodo_inicio','periodo_fim','em_andamento','valor','litros','preco_litro','praca','rodovia','sentido','pagamento','categoria','observacao','origem'];
+ function validateExpense(o){
+  const x={registro_id:o.registro_id?Number(o.registro_id):null,tipo:o.tipo,data:date(o.data),placa:normalize(o.placa).replace(/[^A-Z0-9]/g,''),operacao:o.operacao==='PEND'?null:o.operacao,viagem:String(o.viagem||''),periodo_inicio:o.periodo_inicio?date(o.periodo_inicio):null,periodo_fim:o.periodo_fim?date(o.periodo_fim):null,em_andamento:o.em_andamento===true||o.em_andamento==='true',valor:number(o.valor,'Valor'),litros:o.tipo==='diesel'?number(o.litros,'Litros'):null,preco_litro:o.tipo==='diesel'?number(o.preco_litro,'Preço/L'):null,origem:o.origem||{}};
+  if(!['diesel','pedagio'].includes(x.tipo)||(x.operacao!==null&&!OPS[x.operacao])||!x.data||!(/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/).test(x.placa)||x.valor===null)throw Error('Informe tipo, data, placa, operação e valor válidos.');
+  if(x.litros===0||x.preco_litro===0)throw Error('Litros e preço/L devem ser positivos ou vazios.');
+  if(x.periodo_inicio&&x.periodo_fim&&x.periodo_fim<x.periodo_inicio)throw Error('Fim da viagem anterior ao início.');
+  if(x.em_andamento&&x.periodo_fim)throw Error('Viagem em andamento deve ficar sem data final.');
+  if(x.registro_id!==null&&!(Number.isSafeInteger(x.registro_id)&&x.registro_id>0))throw Error('Vínculo de viagem inválido.');
+  for(const k of ['horario','tipo_veiculo','natureza','praca','rodovia','sentido','pagamento','categoria','observacao'])x[k]=String(o[k]||'');
+  const warnings=[];if(x.litros&&x.preco_litro&&Math.abs(x.litros*x.preco_litro-x.valor)>.1)warnings.push('Valor ÷ litros ('+(x.valor/x.litros).toFixed(4)+') diverge do preço/L informado ('+x.preco_litro+').');if(!x.registro_id)warnings.push('Sem vínculo com viagem: custo incluído, KM/L indisponível.');return {record:x,warnings};
+ }
+ function parseExpenses(wb,X,tipo,defaultOp='SP'){
+  const aliases={DATA:'data',DATAS:'data','DATA DE PASSAGEM':'data','DATA ABASTECIMENTO':'data',PLACA:'placa','PLACA VEICULO':'placa',VEICULO:'placa',HORARIO:'horario','TIPO DO VEICULO':'tipo_veiculo','DEBITO/CREDITO':'natureza',DESCRICAO:'observacao','VALOR(R$)':'valor',OPERACAO:'operacao',OPERACOES:'viagem',VIAGEM:'viagem',VALOR:'valor','VALOR TOTAL':'valor','CUSTO DO DIESEL':'valor','VALOR DIESEL':'valor','CUSTO':'valor','VALOR PEDAGIO':'valor',LITROS:'litros',LITRAGEM:'litros','QUANTIDADE LITROS':'litros','PRECO POR LITRO':'preco_litro','PRECO/LITRO':'preco_litro','PRECO/L':'preco_litro',PRACA:'praca','PRACA DE PEDAGIO':'praca',RODOVIA:'rodovia',SENTIDO:'sentido',PAGAMENTO:'pagamento','FORMA DE PAGAMENTO':'pagamento',CATEGORIA:'categoria',OBSERVACAO:'observacao','DATA INICIAL':'periodo_inicio','DATA FINAL':'periodo_fim','ID REGISTRO':'registro_id','EM ANDAMENTO':'em_andamento'};
+  const rows=[],issues=[];for(const sheet of wb.SheetNames){const a=X.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:'',raw:true});const h=a.findIndex((r,i)=>i<50&&r.some(v=>aliases[normalize(v)]==='data')&&r.some(v=>aliases[normalize(v)]==='placa')&&r.some(v=>aliases[normalize(v)]==='valor'));if(h<0){if(a.some(r=>r.some(v=>!missing(v))))issues.push(sheet+': cabeçalho DATA, PLACA e VALOR não identificado.');continue;}const headers=a[h],mapped=headers.map(v=>aliases[normalize(v)]);if(mapped.filter(Boolean).length!==new Set(mapped.filter(Boolean)).size){issues.push(sheet+': colunas equivalentes duplicadas.');continue;}
+   for(let i=h+1;i<a.length;i++){const raw=a[i];if(raw.every(missing))continue;const values={};headers.forEach((v,j)=>values[String(v)||'Coluna '+(j+1)]=raw[j]);const o={tipo,operacao:defaultOp,origem:{aba:sheet,linha:i+1,colunas:values}};mapped.forEach((k,j)=>{if(k)o[k]=raw[j];});if(o.operacao&&o.operacao!=='PEND'&&!OPS[o.operacao])o.operacao=operation(o.operacao,'','',defaultOp);if(o.em_andamento)o.em_andamento=['SIM','TRUE','1'].includes(normalize(o.em_andamento));try{const v=validateExpense(o);rows.push({sheet,line:i+1,record:v.record,warnings:v.warnings,error:null,selected:true});}catch(e){rows.push({sheet,line:i+1,record:null,warnings:[],error:e.message,selected:false});}}
+  }return {rows,issues};
+ }
+ const core={expenseRows,executiveStats,comparisonPeriods,evolution,validateExpense,parseExpenses,EXPENSE_FIELDS,estimate,MARKET_REFS,marketReference,fuelBasis,analysis,days,fuelLiters,OPS,HEADERS,fields,normalize,missing,number,date,period,validate,operation,parseWorkbook,classify,identity,payload,filtered,stats,groups,alerts,sum,known,ratio,order,exportRows};
  if(typeof module!=='undefined'&&module.exports)module.exports=core;else root.FrotaCore=core;
 })(typeof window!=='undefined'?window:globalThis);
