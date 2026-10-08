@@ -99,14 +99,39 @@
  const sum=(rows,k)=>rows.reduce((s,x)=>s+(Number(x[k])||0),0);
  const known=(rows,k)=>rows.some(x=>x[k]!==null&&x[k]!==undefined)?sum(rows,k):null;
  const ratio=(a,b)=>a!==null&&b>0?a/b:null;
- const days=x=>Math.round((new Date(x.data_fim)-new Date(x.data))/86400000)+1;
+ const days=x=>Math.round((new Date(x.data_fim||x.data)-new Date(x.data))/86400000)+1;
+ const fuelLiters=x=>x.litros>0?x.litros:x.diesel>0&&x.preco_litro>0?x.diesel/x.preco_litro:null;
  const order=(a,b)=>a.data.localeCompare(b.data)||a.data_fim.localeCompare(b.data_fim)||(a.km_inicial??Infinity)-(b.km_inicial??Infinity)||(a.id??0)-(b.id??0);
  function filtered(rows,f={}){return rows.filter(x=>!x.deleted_at&&(!f.operation||x.operacao===f.operation)&&(!f.plate||x.placa===f.plate)&&(!f.driver||x.motorista===f.driver)&&(!f.start||x.data_fim>=f.start)&&(!f.end||x.data<=f.end));}
  function stats(rows){
   const km=sum(rows,'km_total'),fuel=known(rows,'diesel'),toll=known(rows,'pedagio'),cost=fuel===null&&toll===null?null:(fuel??0)+(toll??0),plates=new Set(rows.map(x=>x.placa)),drivers=new Set(rows.map(x=>x.motorista));
   const covered=rows.filter(x=>x.km_total>0);const liters=known(rows,'litros'),litersComplete=covered.length>0&&covered.every(x=>x.litros>0)&&rows.every(x=>!(x.litros>0)||x.km_total!==null);
-  const priced=rows.filter(x=>x.litros>0&&x.diesel!==null);
-  return {km,fuel,toll,cost,plates:plates.size,drivers:drivers.size,cpkm:ratio(cost,km),fpkm:ratio(fuel,km),tpkm:ratio(toll,km),avgkm:ratio(km,plates.size),liters,kml:litersComplete?ratio(km,liters):null,price:ratio(sum(priced,'diesel'),sum(priced,'litros')),fills:rows.filter(x=>x.diesel>0||x.litros>0).length,pending:rows.filter(x=>x.km_total===null).length,missingToll:rows.filter(x=>x.pedagio===null).length,missingFuel:rows.filter(x=>x.diesel===null).length,n:rows.length};
+  const priced=rows.filter(x=>fuelLiters(x)>0&&(x.diesel!==null||x.preco_litro>0));
+  const consumptionComplete=covered.length>0&&covered.every(x=>fuelLiters(x)>0)&&rows.every(x=>!(fuelLiters(x)>0)||x.km_total!==null);
+  const effectiveLiters=rows.reduce((n,x)=>n+(fuelLiters(x)||0),0),estimatedLiters=rows.some(x=>!(x.litros>0)&&fuelLiters(x)>0);
+  return {km,fuel,toll,cost,plates:plates.size,drivers:drivers.size,cpkm:ratio(cost,km),fpkm:ratio(fuel,km),tpkm:ratio(toll,km),avgkm:ratio(km,plates.size),liters,kml:litersComplete?ratio(km,liters):null,consumption:consumptionComplete?ratio(km,effectiveLiters):null,estimatedLiters,effectiveLiters:effectiveLiters||null,price:ratio(priced.reduce((n,x)=>n+(x.diesel??(x.preco_litro*fuelLiters(x))),0),priced.reduce((n,x)=>n+fuelLiters(x),0)),fills:rows.filter(x=>x.diesel>0||x.litros>0).length,pending:rows.filter(x=>x.km_total===null).length,missingToll:rows.filter(x=>x.pedagio===null).length,missingFuel:rows.filter(x=>x.diesel===null).length,n:rows.length};
+ }
+ const MARKET_REFS=[{"start":"2026-09-20","end":"2026-09-26","place":"BRASILIA","type":"S500","price":7.05,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-20_2026-09-26.xlsx"},{"start":"2026-09-20","end":"2026-09-26","place":"SAO PAULO","type":"S500","price":6.55,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-20_2026-09-26.xlsx"},{"start":"2026-09-20","end":"2026-09-26","place":"BRASILIA","type":"S10","price":7.34,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-20_2026-09-26.xlsx"},{"start":"2026-09-20","end":"2026-09-26","place":"SAO PAULO","type":"S10","price":7.08,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-20_2026-09-26.xlsx"},{"start":"2026-09-20","end":"2026-09-26","place":"Brasil","type":"S500","price":6.85,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-20_2026-09-26.xlsx"},{"start":"2026-09-20","end":"2026-09-26","place":"Brasil","type":"S10","price":7.33,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-20_2026-09-26.xlsx"},{"start":"2026-09-27","end":"2026-10-03","place":"BRASILIA","type":"S500","price":7.19,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-27_2026-10-03.xlsx"},{"start":"2026-09-27","end":"2026-10-03","place":"SAO PAULO","type":"S500","price":6.64,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-27_2026-10-03.xlsx"},{"start":"2026-09-27","end":"2026-10-03","place":"BRASILIA","type":"S10","price":7.41,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-27_2026-10-03.xlsx"},{"start":"2026-09-27","end":"2026-10-03","place":"SAO PAULO","type":"S10","price":7.23,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-27_2026-10-03.xlsx"},{"start":"2026-09-27","end":"2026-10-03","place":"Brasil","type":"S500","price":6.9,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-27_2026-10-03.xlsx"},{"start":"2026-09-27","end":"2026-10-03","place":"Brasil","type":"S10","price":7.35,"source":"https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/resumo_semanal_lpc_2026-09-27_2026-10-03.xlsx"}];
+ function marketReference(x,type='S10'){
+  const place=x.operacao==='SP'?'SAO PAULO':x.operacao==='BSB'?'BRASILIA':'Brasil';
+  const eligible=MARKET_REFS.filter(r=>r.type===type&&r.place===place&&r.start<=x.data).sort((a,b)=>b.start.localeCompare(a.start));
+  const ref=eligible[0];return ref?{...ref,fallback:x.data>ref.end,national:place==='Brasil'}:null;
+ }
+ function fuelBasis(x,type='S10'){
+  if(x.litros>0)return {liters:x.litros,price:ratio(x.diesel,x.litros)??x.preco_litro,estimated:false,derived:false,source:'Litros informados',ref:null};
+  if(x.diesel===0)return {liters:0,price:x.preco_litro??null,estimated:false,derived:false,source:'Sem gasto no registro',ref:null};
+  return {liters:x.diesel>0&&x.preco_litro>0?x.diesel/x.preco_litro:null,price:x.preco_litro??null,estimated:false,derived:x.preco_litro>0,source:x.preco_litro>0?'Preço pago informado':'Informe litros ou preço pago/L',ref:null};
+ }
+
+ function analysis(rows,type='S10'){
+  const s=stats(rows),basis=rows.map(x=>fuelBasis(x,type)),complete=rows.length>0&&rows.every((x,i)=>x.km_total!==null&&x.diesel!==null&&basis[i].liters!==null),liters=basis.reduce((n,b)=>n+(b.liters??0),0);
+  const priced=rows.map((x,i)=>({x,b:basis[i]})).filter(({b})=>b.liters>0&&b.price>0);
+  return {...s,consumption:complete?ratio(s.km,liters):null,effectiveLiters:liters||null,estimatedLiters:basis.some(b=>b.estimated&&b.liters>0),price:ratio(priced.reduce((n,{b})=>n+b.price*b.liters,0),priced.reduce((n,{b})=>n+b.liters,0)),litersPerKm:complete?ratio(liters,s.km):null,derivedLiters:basis.some(b=>b.derived),basis,marketFallback:basis.some(b=>b.ref?.fallback),missingBasis:basis.filter(b=>b.liters===null).length};
+ }
+ function estimate(rows,type='S10'){
+  const bases=rows.map(x=>{const actual=fuelBasis(x,type),ref=marketReference(x,type);return actual.liters!==null?actual:{liters:x.diesel>0&&ref?x.diesel/ref.price:null,price:ref?.price??null,ref,estimated:true};});
+  const complete=rows.length>0&&rows.every((x,i)=>x.km_total!==null&&x.diesel!==null&&bases[i].liters!==null),liters=bases.reduce((n,b)=>n+(b.liters??0),0),km=sum(rows,'km_total'),priced=bases.filter(b=>b.liters>0&&b.price>0);
+  return {liters:complete&&liters>0?liters:null,kml:complete?ratio(km,liters):null,lpkm:complete?ratio(liters,km):null,price:ratio(priced.reduce((n,b)=>n+b.price*b.liters,0),priced.reduce((n,b)=>n+b.liters,0)),market:bases.some(b=>b.estimated),fallback:bases.some(b=>b.ref?.fallback),bases};
  }
  function groups(rows,key){const by=new Map();for(const x of rows){if(!by.has(x[key]))by.set(x[key],[]);by.get(x[key]).push(x);}return [...by].map(([name,a])=>({name,rows:a,stats:stats(a),last:a.slice().sort(order).at(-1)})).sort((a,b)=>a.name.localeCompare(b.name));}
  const median=values=>{const a=values.slice().sort((x,y)=>x-y),i=Math.floor(a.length/2);return a.length?a.length%2?a[i]:(a[i-1]+a[i])/2:null;};
@@ -120,6 +145,6 @@
   return out;
  }
  function exportRows(rows){return rows.map(x=>Object.fromEntries(HEADERS.map((h,i)=>[h,x[fields[i]]??''])));}
- const core={OPS,HEADERS,fields,normalize,missing,number,date,period,validate,operation,parseWorkbook,classify,identity,payload,filtered,stats,groups,alerts,sum,known,ratio,order,exportRows};
+ const core={estimate,MARKET_REFS,marketReference,fuelBasis,analysis,days,fuelLiters,OPS,HEADERS,fields,normalize,missing,number,date,period,validate,operation,parseWorkbook,classify,identity,payload,filtered,stats,groups,alerts,sum,known,ratio,order,exportRows};
  if(typeof module!=='undefined'&&module.exports)module.exports=core;else root.FrotaCore=core;
 })(typeof window!=='undefined'?window:globalThis);
