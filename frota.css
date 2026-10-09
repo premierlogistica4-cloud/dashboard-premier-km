@@ -9,3 +9,6 @@ aside{position:sticky;top:0;height:100vh;overflow:auto}main{min-width:0}nav .fro
 #frotaRoot .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}#frotaRoot .panel{margin-bottom:14px}#frotaRoot td:has(details){white-space:normal;min-width:160px}#frotaRoot details summary{cursor:pointer;color:var(--cyan);padding:10px 0}#frotaRoot td details[open]{min-width:320px}#frotaRoot td details div{overflow-wrap:anywhere}@media(max-width:900px){#frotaRoot .grid{grid-template-columns:1fr}}
 
 #frotaRoot button[aria-pressed="true"]{border-color:var(--cyan);background:#103c4c;color:#62e6ff}#fOverviewTolls .bulk,#fOverviewKm .bulk{display:flex;gap:8px;margin-bottom:14px}
+
+/* Compact selection only in the operations journey table. */
+#frotaRoot input.f-check[aria-label^="Selecionar viagem"]{width:16px;height:16px;min-height:16px;max-height:16px;padding:0;margin:0;vertical-align:middle}
