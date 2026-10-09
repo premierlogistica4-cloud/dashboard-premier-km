@@ -1,0 +1,4 @@
+const test=require('node:test'),assert=require('node:assert/strict'),{deduplicate}=require('../km-import.js');const row={data:'2026-10-09',placa:'ABC1D23',km_realizado:120,volta_serbom:10,google:125};
+test('same data reuploaded and repeated within workbook are skipped',()=>{const r=deduplicate([row,{...row,placa:' abc-1d23 '},{...row,data:'2026-10-10'},{...row,data:'2026-10-10'}],[row]);assert.equal(r.duplicates,3);assert.equal(r.accepted.length,1);assert.equal(r.accepted[0].data,'2026-10-10');});
+test('different vehicle, date or actual trip values remain separate',()=>{const r=deduplicate([{...row,placa:'DEF4G56'},{...row,data:'2026-10-10'},{...row,km_realizado:121}],[row]);assert.equal(r.accepted.length,3);assert.equal(r.duplicates,0);});
+test('computed percentage formatting does not duplicate source data',()=>{assert.equal(deduplicate([{...row,percentual:1.33333}],[{...row,percentual:1.33}]).duplicates,1);});
