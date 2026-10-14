@@ -3,7 +3,7 @@
 -- Immutable entries: no UPDATE/DELETE grant. Existing official source tables remain untouched.
 create table public.ct_lancamentos(
  id bigint generated always as identity primary key,
- tipo text not null check(tipo in ('estoque','multa','pedagio')),
+ tipo text not null check(tipo in ('estoque','multa','pedagio','confronto')),
  data date not null, chave text not null, dados jsonb not null,
  proveniencia jsonb not null default '{}', created_at timestamptz not null default now(),unique(tipo,chave)
 );
@@ -19,13 +19,14 @@ begin
  if jsonb_typeof(j)<>'object' or octet_length(j::text)>16000 then raise exception 'Preencha somente os campos do formulário.';end if;
  allowed:=case new.tipo
  when 'estoque' then array['data','estoque','sistema','filial','sku','produto','unidade','quantidade','reservado','minimo','maximo','consumo','custo','lote','validade','linha_ref','disponivel_informado','valor_estoque','peso_liquido','peso_bruto','status','base_confronto','expedicao']
+ when 'confronto' then array['data','sku','produto','unidade','premier','serbom','diferenca','situacao','metodo']
  when 'multa' then array['data','auto','orgao','horario','placa','codigo','descricao','local','valor','pago','status','vencimento','pagamento','pontos']
  else array['tipo','data','horario','placa','tipo_veiculo','valor','operacao','registro_id','praca','rodovia','sentido','pagamento','categoria','viagem','descricao'] end;
  for k in select jsonb_object_keys(j) loop
   if not k=any(allowed) or jsonb_typeof(j->k) in ('array','object') or length(j->>k)>2000 then raise exception 'Campo não permitido: %. Documentos e dados pessoais não entram nesta área pública.',k;end if;
  end loop;
  -- Require typed numeric JSON to prevent text concatenation in public analytics.
- foreach k in array case new.tipo when 'estoque' then array['quantidade','reservado','disponivel_informado','valor_estoque','peso_liquido','peso_bruto','base_confronto','minimo','maximo','consumo','custo'] when 'multa' then array['valor','pago','pontos'] else array['valor','registro_id'] end loop
+ foreach k in array case new.tipo when 'estoque' then array['quantidade','reservado','disponivel_informado','valor_estoque','peso_liquido','peso_bruto','base_confronto','minimo','maximo','consumo','custo'] when 'confronto' then array['premier','serbom','diferenca'] when 'multa' then array['valor','pago','pontos'] else array['valor','registro_id'] end loop
   if j ? k and j->k<>'null'::jsonb and jsonb_typeof(j->k)<>'number' then raise exception 'Número inválido: %',k;end if;
  end loop;
  new.data:=(j->>'data')::date;
@@ -35,6 +36,10 @@ begin
   if (j->>'minimo')::numeric<0 or (j->>'maximo')::numeric<0 or (j->>'consumo')::numeric<0 or (j->>'custo')::numeric<0 or (j->>'maximo')::numeric<(j->>'minimo')::numeric then raise exception 'Parâmetros de estoque inválidos.';end if;
   perform (j->>'validade')::date;perform (j->>'expedicao')::date;
   new.chave:=jsonb_build_array(j->>'data',j->>'estoque',j->>'sistema',j->>'sku',j->>'unidade',j->>'lote',coalesce(j->>'linha_ref',''))::text;
+ elsif new.tipo='confronto' then
+  if coalesce(j->>'sku','')='' or j->>'premier' is null or j->>'serbom' is null or j->>'diferenca' is null then raise exception 'Código e quantidades das duas bases e diferença são obrigatórios.';end if;
+  foreach k in array array['premier','serbom','diferenca'] loop v:=(j->>k)::numeric;if v='NaN'::numeric or abs(v)>1000000000000 then raise exception 'Número inválido: %',k;end if;end loop;
+  new.chave:=jsonb_build_array(j->>'data',j->>'sku',j->>'unidade')::text;
  elsif new.tipo='multa' then
   if coalesce(j->>'auto','')='' or coalesce(j->>'orgao','')='' or coalesce(j->>'placa','')!~'^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$' or coalesce(j->>'descricao','')='' or j->>'valor' is null or coalesce(j->>'status','') not in ('Pendente','Paga','Em recurso','Cancelada') then raise exception 'Auto, órgão, placa, descrição, valor e status válidos são obrigatórios.';end if;
   foreach k in array array['valor','pago','pontos'] loop v:=(j->>k)::numeric;if v<0 or v='NaN'::numeric or v>1000000000000 then raise exception 'Número inválido: %',k;end if;end loop;
@@ -59,14 +64,15 @@ create trigger ct_lancamentos_validacao before insert on public.ct_lancamentos f
 create function public.ct_importar_lancamentos(p_tipo text,p_rows jsonb) returns jsonb language plpgsql security invoker set search_path='' as $$
 declare r jsonb; j jsonb; k text; prev jsonb; n int:=0; d int:=0;
 begin
- if p_tipo not in ('estoque','multa','pedagio') or jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows) not between 1 and 10000 then raise exception 'Envie de 1 a 10000 linhas do layout.';end if;
+ if p_tipo not in ('estoque','multa','pedagio','confronto') or jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows) not between 1 and 10000 then raise exception 'Envie de 1 a 10000 linhas do layout.';end if;
  perform pg_advisory_xact_lock(hashtext('ct_lancamentos'));
  for r in select value from jsonb_array_elements(p_rows) loop
   j:=r->'dados';
   if p_tipo='estoque' then k:=jsonb_build_array(j->>'data',j->>'estoque',j->>'sistema',j->>'sku',j->>'unidade',j->>'lote',coalesce(j->>'linha_ref',''))::text;
+  elsif p_tipo='confronto' then k:=jsonb_build_array(j->>'data',j->>'sku',j->>'unidade')::text;
   elsif p_tipo='multa' then k:=jsonb_build_array(j->>'orgao',j->>'auto')::text;
   else k:=jsonb_build_array(j->>'data',j->>'horario',j->>'placa',j->>'valor',j->>'praca',j->>'rodovia',j->>'sentido',j->>'descricao')::text;end if;
-  if p_tipo in ('estoque','multa') then select resumo into prev from public.ct_registros where tipo=p_tipo and chave=k;else prev:=null;end if;
+  if p_tipo in ('estoque','multa','confronto') then select resumo into prev from public.ct_registros where tipo=p_tipo and chave=k;else prev:=null;end if;
   if prev is null then select dados into prev from public.ct_lancamentos where tipo=p_tipo and chave=k;end if;
   if prev is not null then
    if prev is distinct from j then raise exception 'Registro existente com informações diferentes. Original mantido: %',k;end if;d:=d+1;
