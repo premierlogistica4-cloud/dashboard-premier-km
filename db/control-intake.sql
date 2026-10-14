@@ -24,6 +24,10 @@ begin
  for k in select jsonb_object_keys(j) loop
   if not k=any(allowed) or jsonb_typeof(j->k) in ('array','object') or length(j->>k)>2000 then raise exception 'Campo não permitido: %. Documentos e dados pessoais não entram nesta área pública.',k;end if;
  end loop;
+ -- Require typed numeric JSON to prevent text concatenation in public analytics.
+ foreach k in array case new.tipo when 'estoque' then array['quantidade','reservado','disponivel_informado','valor_estoque','peso_liquido','peso_bruto','base_confronto','minimo','maximo','consumo','custo'] when 'multa' then array['valor','pago','pontos'] else array['valor','registro_id'] end loop
+  if j ? k and j->k<>'null'::jsonb and jsonb_typeof(j->k)<>'number' then raise exception 'Número inválido: %',k;end if;
+ end loop;
  new.data:=(j->>'data')::date;
  if new.tipo='estoque' then
   if coalesce(j->>'estoque','') not in ('Premier','Serbom','Premier Brasília') or coalesce(j->>'sku','')='' or coalesce(j->>'produto','')='' or coalesce(j->>'unidade','')='' or j->>'quantidade' is null then raise exception 'Estoque, código, produto, unidade e quantidade obrigatórios.';end if;
@@ -41,10 +45,12 @@ begin
  else
   if coalesce(j->>'placa','')!~'^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$' or j->>'valor' is null or (j->>'valor')::numeric<0 or (j->>'valor')::numeric>10000000 then raise exception 'Data, placa e valor válidos são obrigatórios.';end if;
   if coalesce(j->>'horario','')<>'' and j->>'horario'!~'^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$' then raise exception 'Horário inválido.';end if;
+  if j->>'operacao' is not null and j->>'operacao' not in ('SP','BSB','FAZ') then raise exception 'Operação inválida.';end if;
   if j->>'registro_id' is not null and not exists(select 1 from public.frota_registros r where r.id=(j->>'registro_id')::bigint and r.placa=j->>'placa' and r.deleted_at is null and r.data<=new.data and coalesce(r.data_fim,r.data)>=new.data and (j->>'operacao' is null or j->>'operacao'=r.operacao)) then raise exception 'Viagem não corresponde à placa, data e operação.';end if;
   new.chave:=jsonb_build_array(j->>'data',j->>'horario',j->>'placa',j->>'valor',j->>'praca',j->>'rodovia',j->>'sentido',j->>'descricao')::text;
  end if;
  -- Provenance is limited to file identification. No arbitrary source columns can be submitted.
+ if new.proveniencia ? 'linha' and new.proveniencia->'linha'<>'null'::jsonb and (jsonb_typeof(new.proveniencia->'linha')<>'number' or (new.proveniencia->>'linha')::numeric<>trunc((new.proveniencia->>'linha')::numeric) or (new.proveniencia->>'linha')::numeric<1 or (new.proveniencia->>'linha')::numeric>1000000) then raise exception 'Linha de origem inválida.';end if;
  new.proveniencia:=jsonb_strip_nulls(jsonb_build_object('arquivo',left(new.proveniencia->>'arquivo',250),'aba',left(new.proveniencia->>'aba',100),'linha',new.proveniencia->'linha'));
  return new;
 end $$;

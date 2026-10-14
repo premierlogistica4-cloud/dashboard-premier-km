@@ -29,6 +29,10 @@
 
    if(x.minimo!==null&&x.maximo!==null&&x.maximo<x.minimo)throw Error('Máximo menor que o mínimo.');
    x.validade=optionalDate(o.validade);x.expedicao=optionalDate(o.expedicao);for(const k of ['disponivel_informado','valor_estoque','peso_liquido','peso_bruto','base_confronto'])x[k]=F.missing(o[k])?null:signed(o[k]);
+   if(x.base_confronto===null){
+    if(x.sistema==='Premier')x.base_confronto=x.disponivel_informado??(x.reservado!==null?x.quantidade-x.reservado:null);
+    else if(x.sistema==='Serbom'&&x.status)x.base_confronto=norm(x.status)==='DISPONIVEL'?x.peso_bruto:0;
+   }
   }else{
    x.horario=time(o.horario);if(x.horario&&!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(x.horario))throw Error('Horário inválido.');x.auto=norm(o.auto);x.orgao=norm(o.orgao);x.placa=norm(o.placa).replace(/[^A-Z0-9]/g,'');
    if(!x.auto||!x.orgao||!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(x.placa)||!x.descricao)throw Error('Auto, órgão, placa e descrição são obrigatórios.');
