@@ -72,6 +72,12 @@ begin
   elsif p_tipo='confronto' then k:=jsonb_build_array(j->>'data',j->>'sku',j->>'unidade')::text;
   elsif p_tipo='multa' then k:=jsonb_build_array(j->>'orgao',j->>'auto')::text;
   else k:=jsonb_build_array(j->>'data',j->>'horario',j->>'placa',j->>'valor',j->>'praca',j->>'rodovia',j->>'sentido',j->>'descricao')::text;end if;
+  -- Row order and spreadsheet filename do not create a new stock position.
+  -- Preserve existing source rows; skip identical executive content on new imports.
+  if p_tipo='estoque' and (
+   exists(select 1 from public.ct_registros e where e.tipo='estoque' and e.data=(j->>'data')::date and e.resumo-'linha_ref'=j-'linha_ref')
+   or exists(select 1 from public.ct_lancamentos e where e.tipo='estoque' and e.data=(j->>'data')::date and e.dados-'linha_ref'=j-'linha_ref')
+  ) then d:=d+1;continue;end if;
   if p_tipo in ('estoque','multa','confronto') then select resumo into prev from public.ct_registros where tipo=p_tipo and chave=k;else prev:=null;end if;
   if prev is null then select dados into prev from public.ct_lancamentos where tipo=p_tipo and chave=k;end if;
   if prev is not null then
