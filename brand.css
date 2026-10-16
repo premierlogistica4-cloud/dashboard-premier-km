@@ -21,3 +21,5 @@ th{background:#282725;color:#c0b498}td{border-bottom-color:#34312a}tbody tr:hove
 #frotaRoot button[aria-pressed="true"]{background:#393021;border-color:var(--gold);color:#f1d69d}
 #fDialog{background:#202022;border-color:var(--line)}#fDialog #fFormError{color:#efa8ad}
 @media(max-width:900px){.brand{max-width:190px;margin:0 auto 16px}.premier-brand-image{height:112px}.top h1{font-size:25px}}
+
+.premier-chart-legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:10px 0 14px;font-size:12px;line-height:1.5;color:var(--txt)}.premier-chart-legend>span{display:inline-flex;align-items:center;gap:7px}.premier-chart-legend i,.premier-legend-swatch{display:inline-block;flex:0 0 13px;width:13px;height:13px;border:1px solid #ffffff50;border-radius:2px;vertical-align:middle}.premier-legend-swatch{margin-right:7px}.ph>.premier-chart-legend{margin:0;justify-content:flex-end}.va-cost-legend>span{display:inline-flex;align-items:center;gap:3px}#controlRoot .ct-pair-line{grid-template-columns:78px 1fr 90px}.km-pair-line{grid-template-columns:88px 1fr 95px}
