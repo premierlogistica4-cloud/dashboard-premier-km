@@ -6,10 +6,10 @@
  const money=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
  const date=v=>v?v.split('-').reverse().join('/'):'—';
  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const td=v=>'<td>'+esc(StateLabels.format(v))+'</td>';
+ const td=v=>'<td>'+esc(StateLabels.format(typeof v==='number'?number(v):v))+'</td>';
  const table=(headers,rows)=>'<div class="tablewrap"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+ (rows||'<tr><td colspan="'+headers.length+'">Nenhum registro neste filtro.</td></tr>')+'</tbody></table></div>';
  const panel=(title,body)=>'<div class="panel"><h2>'+esc(StateLabels.format(title))+'</h2>'+body+'</div>';
- const cards=list=>'<div class="cards">'+list.map(([k,v,sub=''])=>'<div class="card"><div class="cap">'+esc(k)+'</div><div class="val">'+esc(v)+'</div><p class="sub">'+esc(sub)+'</p></div>').join('')+'</div>';
+ const cards=list=>'<div class="cards">'+list.map(([k,v,sub=''])=>'<div class="card"><div class="cap">'+esc(k)+'</div><div class="val">'+esc(typeof v==='number'?number(v):v)+'</div><p class="sub">'+esc(sub)+'</p></div>').join('')+'</div>';
  const opt=(v,label,sel)=>'<option value="'+esc(v)+'" '+(v===sel?'selected':'')+'>'+esc(StateLabels.format(label))+'</option>';
  const act=(a,label)=>'<button data-ct="'+a+'">'+esc(label)+'</button>';
  const sourceName=s=>s==='Premier'?'Premier (ERP)':s==='Serbom'?'Serbom (físico)':s;
