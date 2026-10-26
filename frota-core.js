@@ -36,7 +36,7 @@
  };
  const HEADERS=['DATA','DATA FIM','OPERAÇÃO','MOTORISTA','PLACA','KM INICIAL','KM FINAL','KM TOTAL','VALOR DIESEL','LITROS','PREÇO/LITRO','PEDÁGIO','PONTO DE PARTIDA','DESTINO/ROTA','OBSERVAÇÃO'];
  const fields=['data','data_fim','operacao','motorista','placa','km_inicial','km_final','km_declarado','diesel','litros','preco_litro','pedagio','partida','rota','observacao'];
- const identity=x=>JSON.stringify(['data','operacao','placa','km_inicial','partida','rota'].map(k=>x[k]??''));
+ const identity=x=>JSON.stringify(['data','data_fim','operacao','placa','motorista','km_inicial','km_final','km_declarado','partida','rota'].map(k=>x[k]??''));
  const payload=x=>Object.fromEntries(fields.map(k=>[k,x[k]??null]).concat([['origem',x.origem??{}]]));
  const equal=(a,b)=>['data_fim','motorista','km_final','km_declarado','diesel','litros','preco_litro','pedagio','observacao'].every(k=>(a[k]??null)===(b[k]??null));
  function operation(v,origin,description,defaultOp='SP'){
@@ -102,7 +102,7 @@
  const days=x=>Math.round((new Date(x.data_fim||x.data)-new Date(x.data))/86400000)+1;
  const fuelLiters=x=>x.litros>0?x.litros:x.diesel>0&&x.preco_litro>0?x.diesel/x.preco_litro:null;
  const order=(a,b)=>a.data.localeCompare(b.data)||a.data_fim.localeCompare(b.data_fim)||(a.km_inicial??Infinity)-(b.km_inicial??Infinity)||(a.id??0)-(b.id??0);
- function filtered(rows,f={}){return rows.filter(x=>!x.deleted_at&&(!f.operation||x.operacao===f.operation)&&(!f.plate||x.placa===f.plate)&&(!f.driver||x.motorista===f.driver)&&(!f.start||x.data_fim>=f.start)&&(!f.end||x.data<=f.end));}
+ function filtered(rows,f={}){return rows.filter(x=>!x.deleted_at&&(!f.operation||x.operacao===f.operation)&&(!f.plate||x.placa===f.plate)&&(!f.driver||x.motorista===f.driver)&&(!f.trip||String(x.id)===String(f.trip))&&(!f.start||x.data_fim>=f.start)&&(!f.end||x.data<=f.end));}
  function stats(rows){
   const km=sum(rows,'km_total'),fuel=known(rows,'diesel'),toll=known(rows,'pedagio'),cost=fuel===null&&toll===null?null:(fuel??0)+(toll??0),plates=new Set(rows.map(x=>x.placa)),drivers=new Set(rows.map(x=>x.motorista));
   const covered=rows.filter(x=>x.km_total>0);const liters=known(rows,'litros'),litersComplete=covered.length>0&&covered.every(x=>x.litros>0)&&rows.every(x=>!(x.litros>0)||x.km_total!==null);
