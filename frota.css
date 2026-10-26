@@ -12,3 +12,35 @@ aside{position:sticky;top:0;height:100vh;overflow:auto}main{min-width:0}nav .fro
 
 /* Compact selection only in the operations journey table. */
 #frotaRoot input.f-check[aria-label^="Selecionar viagem"]{width:16px;height:16px;min-height:16px;max-height:16px;padding:0;margin:0;vertical-align:middle}
+
+/* A análise abre fora da tabela para manter os setores legíveis. */
+#fTripAnalysis{width:min(1040px,calc(100% - 32px));max-width:1040px;max-height:92vh;padding:0;border:1px solid var(--gold,#d5b264);border-radius:16px;background:var(--bg);color:var(--txt);overflow:auto}
+#fTripAnalysis::backdrop{background:#000b;backdrop-filter:blur(3px)}
+#fTripAnalysis .fta-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:22px 26px;border-bottom:1px solid var(--line);background:var(--p);position:sticky;top:0;z-index:1}
+#fTripAnalysis .fta-header h2{font-size:23px;margin:4px 0 8px;color:var(--gold,#d5b264)}
+#fTripAnalysis .fta-header p{margin:0;color:var(--muted);line-height:1.5}
+#fTripAnalysis .fta-header .fta-eyebrow{font-size:11px;letter-spacing:1.5px;color:var(--gold,#d5b264)}
+#fTripAnalysis .fta-header button{flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--txt)}
+#fTripAnalysis .fta-body{padding:22px 26px}
+#fTripAnalysis .fta-status{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:7px 12px;margin-bottom:18px;font-size:12px;color:var(--gold,#d5b264)}
+#fTripAnalysis .fta-section{min-width:0;background:var(--p);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+#fTripAnalysis h3{font-size:15px;margin:0 0 16px;color:var(--txt)}
+#fTripAnalysis .fta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 16px;margin:0}
+#fTripAnalysis .fta-identity,#fTripAnalysis .fta-cost .fta-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+#fTripAnalysis .fta-field{min-width:0}
+#fTripAnalysis dt{font-size:12px;color:var(--muted);margin-bottom:7px}
+#fTripAnalysis dd{font-size:20px;font-weight:650;margin:0;overflow-wrap:anywhere}
+#fTripAnalysis .fta-identity dd{font-size:16px}
+#fTripAnalysis small{display:block;font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+#fTripAnalysis .fta-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#fTripAnalysis .fta-cost{border-left:3px solid var(--gold,#d5b264)}
+#fTripAnalysis .fta-cost .fta-field:nth-child(3) dd{color:var(--gold,#d5b264)}
+#fTripAnalysis .fta-muted{font-size:12px;color:var(--muted);line-height:1.6}
+#fTripAnalysis .fta-receipts{border-top:1px solid var(--line);padding:12px 0}
+#fTripAnalysis summary{cursor:pointer;color:var(--gold,#d5b264);font-weight:600;padding:6px 0}
+#fTripAnalysis summary span{font-size:12px;color:var(--muted);font-weight:400;margin-left:8px}
+#fTripAnalysis .tablewrap{overflow:auto;max-height:360px;margin-top:12px}
+#fTripAnalysis table{min-width:800px;font-size:12px}
+#fTripAnalysis th,#fTripAnalysis td{font-size:12px}
+#fTripAnalysis .fta-observation{white-space:pre-wrap;line-height:1.6;margin:0;overflow-wrap:anywhere}
+@media(max-width:720px){#fTripAnalysis .fta-columns{grid-template-columns:1fr;gap:0}#fTripAnalysis .fta-identity,#fTripAnalysis .fta-cost .fta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#fTripAnalysis .fta-header,#fTripAnalysis .fta-body{padding:16px}#fTripAnalysis dd{font-size:18px}}
