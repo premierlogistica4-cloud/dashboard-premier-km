@@ -154,6 +154,8 @@
    if(tolls.length)row.pedagio=sum(tolls,'valor');
    // O lançamento importado contém valores incompatíveis e aguarda o comprovante.
    // O registro original permanece intacto e a regra deixa de atuar se o valor for corrigido.
+   const corrected= x.origem?.km_desconsiderado && records.find(y=>y.id!==x.id&&!y.deleted_at&&!y.origem?.km_desconsiderado&&y.data===x.data&&y.placa===x.placa&&y.motorista===x.motorista&&y.diesel!=null&&x.diesel!=null&&Number(y.diesel)===Number(x.diesel)&&y.litros!=null&&x.litros!=null&&Number(y.litros)===Number(x.litros)&&((y.km_inicial!=null&&Number(y.km_inicial)===Number(x.km_inicial))||(y.km_final!=null&&Number(y.km_final)===Number(x.km_final))));
+   if(corrected){row.combustivel_duplicado={diesel:row.diesel,litros:row.litros,registro_correspondente:corrected.id};row.diesel=null;row.litros=null;row.preco_litro=null;row.abastecimentos=0;}
    if(x.id===65&&Number(x.diesel)===28628.16){row.combustivel_pendente={diesel:x.diesel,litros:x.litros,preco_litro:x.preco_litro,origem:x.origem};row.diesel=null;row.litros=null;row.preco_litro=null;}
    if(x.origem?.km_desconsiderado){row.km_original=x.km_total;row.km_total=null;row.km_desconsiderado=true;}
    return row;

@@ -29,8 +29,8 @@ function memoryDetails(g){
 
 
 function pendingFuelNotice(rows){
- const pending=rows.filter(x=>x.combustivel_pendente);
- return pending.length?'<div class="pd-reading-alert" role="alert"><strong>Combustível em conferência: '+pending.length+' '+(pending.length===1?'viagem':'viagens')+'.</strong><p>O valor recebido é incompatível com litros e preço/L. Ele foi retirado provisoriamente dos indicadores de diesel e custo por KM; o registro original continua disponível. Os totais exibidos são parciais até a conferência da planilha original.</p><details><summary>Ver valores recebidos</summary>'+pending.map(x=>'<p>'+e(x.data)+' · '+e(x.placa)+' · viagem #'+e(x.id)+' · diesel '+m(x.combustivel_pendente.diesel)+' · '+n(x.combustivel_pendente.litros)+' L · preço informado '+m(x.combustivel_pendente.preco_litro)+'/L</p>').join('')+'</details></div>':'';
+ const pending=rows.filter(x=>x.combustivel_pendente),duplicados=rows.filter(x=>x.combustivel_duplicado);
+ return (duplicados.length?'<p class="sub">'+duplicados.length+' abastecimento(s) repetido(s) não somado(s); registros originais preservados.</p>':'')+(pending.length?'<div class="pd-reading-alert" role="alert"><strong>Combustível em conferência: '+pending.length+' '+(pending.length===1?'viagem':'viagens')+'.</strong><p>O valor recebido é incompatível com litros e preço/L. Ele foi retirado provisoriamente dos indicadores de diesel e custo por KM; o registro original continua disponível. Os totais exibidos são parciais até a conferência da planilha original.</p><details><summary>Ver valores recebidos</summary>'+pending.map(x=>'<p>'+e(x.data)+' · '+e(x.placa)+' · viagem #'+e(x.id)+' · diesel '+m(x.combustivel_pendente.diesel)+' · '+n(x.combustivel_pendente.litros)+' L · preço informado '+m(x.combustivel_pendente.preco_litro)+'/L</p>').join('')+'</details></div>':'');
 }
 function fuelConsistencyNotice(rows){
  const inputs=rows.flatMap(x=>{const expenses=(x.despesas||[]).filter(d=>d.tipo==='diesel');return expenses.length?expenses.map(d=>({diesel:d.valor,litros:d.litros,preco_litro:d.preco_litro})):x;});
